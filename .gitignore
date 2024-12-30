@@ -35,8 +35,13 @@ temp/
 *.ogg
 *.wav
 *.mp3
+ffmpeg-master-latest-win64-gpl/
+ffmpeg.exe
+ffplay.exe
+ffprobe.exe
 
 # Sensitive data
 *.key
 *.pem
 .env
+*firebase*.json
