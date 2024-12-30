@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: voice-to-text-bot
+    env: docker
+    buildCommand: docker build -t voice-to-text-bot .
+    startCommand: docker run voice-to-text-bot
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: FIREBASE_DATABASE_URL
+        sync: false
+      - key: FIREBASE_CREDENTIALS_BASE64
+        sync: false

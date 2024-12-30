@@ -1,5 +1,7 @@
 import logging
 import os
+import base64
+import json
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from pydub import AudioSegment
@@ -18,10 +20,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Firebase
-cred = credentials.Certificate("voicetotext-8b952-firebase-adminsdk-ens30-ebdd1bb0e2.json")
-firebase_admin.initialize_app(cred, {
-    'databaseURL': FIREBASE_DATABASE_URL
-})
+def initialize_firebase():
+    try:
+        # Get environment variables
+        creds_base64 = os.environ.get('FIREBASE_CREDENTIALS_BASE64')
+        db_url = os.environ.get('FIREBASE_DATABASE_URL', FIREBASE_DATABASE_URL)
+        bot_token = os.environ.get('BOT_TOKEN', BOT_TOKEN)
+        
+        if creds_base64:
+            # For production: use base64 encoded credentials
+            creds_json = base64.b64decode(creds_base64).decode('utf-8')
+            creds_dict = json.loads(creds_json)
+            cred = credentials.Certificate(creds_dict)
+            logger.info("Using credentials from environment variables")
+        else:
+            # For local development: use JSON file
+            cred = credentials.Certificate("voicetotext-8b952-firebase-adminsdk-ens30-ebdd1bb0e2.json")
+            logger.info("Using credentials from local JSON file")
+        
+        # Initialize Firebase app
+        firebase_admin.initialize_app(cred, {'databaseURL': db_url})
+        logger.info("Firebase initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error initializing Firebase: {str(e)}")
+        raise
+
+# Initialize Firebase
+initialize_firebase()
 
 # Initialize Whisper model (using the small model for efficiency)
 model = WhisperModel("small", device="cpu", compute_type="int8")
