@@ -3,24 +3,21 @@ FROM python:3.11-slim
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Create non-root user
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
-
 # Copy requirements first to leverage Docker cache
-COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+
+# Install Python packages
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
-COPY --chown=appuser:appuser . .
-
-# Download DeepSpeech models
-RUN python download_models.py
+COPY . .
 
 # Create temp directory
 RUN mkdir -p temp
