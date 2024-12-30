@@ -1,5 +1,7 @@
 python-telegram-bot==20.7
-firebase-admin==6.3.0
+firebase-admin==6.2.0
 pydub==0.25.1
-faster-whisper==0.10.0
+deepspeech==0.9.3
+numpy==1.21.0
+scipy==1.7.0
 ffmpeg-python==0.2.0

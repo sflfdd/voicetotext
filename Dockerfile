@@ -19,6 +19,9 @@ RUN pip install --user --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY --chown=appuser:appuser . .
 
+# Download DeepSpeech models
+RUN python download_models.py
+
 # Create temp directory
 RUN mkdir -p temp
 
