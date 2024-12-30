@@ -1,9 +1,8 @@
 python-telegram-bot==20.7
 firebase-admin==6.2.0
 pydub==0.25.1
-deepspeech==0.9.3
-numpy==1.19.5
-scipy==1.7.0
+vosk==0.3.45
+soundfile==0.12.1
 ffmpeg-python==0.2.0
 requests==2.31.0
 tqdm==4.66.1

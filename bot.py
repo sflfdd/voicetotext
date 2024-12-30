@@ -10,9 +10,9 @@ import firebase_admin
 from firebase_admin import credentials, db
 import asyncio
 from config import BOT_TOKEN, FIREBASE_DATABASE_URL
-import deepspeech
-import numpy as np
+from vosk import Model, KaldiRecognizer
 import wave
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -27,7 +27,6 @@ def initialize_firebase():
         # Get environment variables
         creds_base64 = os.environ.get('FIREBASE_CREDENTIALS_BASE64')
         db_url = os.environ.get('FIREBASE_DATABASE_URL', FIREBASE_DATABASE_URL)
-        bot_token = os.environ.get('BOT_TOKEN', BOT_TOKEN)
         
         if creds_base64:
             # For production: use base64 encoded credentials
@@ -51,16 +50,27 @@ def initialize_firebase():
 # Initialize Firebase
 initialize_firebase()
 
-# Initialize DeepSpeech model
-MODEL_PATH = "models/arabic.pbmm"
-SCORER_PATH = "models/arabic.scorer"
+# Download and initialize Vosk model
+def initialize_vosk():
+    model_path = "model"
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+        logger.info("Downloading Arabic Vosk model...")
+        model_url = "https://alphacephei.com/vosk/models/vosk-model-ar-mgb2-0.4.zip"
+        response = requests.get(model_url)
+        zip_path = os.path.join(model_path, "model.zip")
+        with open(zip_path, "wb") as f:
+            f.write(response.content)
+        import zipfile
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(model_path)
+        os.remove(zip_path)
+        logger.info("Model downloaded and extracted")
+    
+    return Model(os.path.join(model_path, "vosk-model-ar-mgb2-0.4"))
 
-def initialize_deepspeech():
-    model = deepspeech.Model(MODEL_PATH)
-    model.enableExternalScorer(SCORER_PATH)
-    return model
-
-model = initialize_deepspeech()
+# Initialize Vosk model
+model = initialize_vosk()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('مرحباً! أرسل لي رسالة صوتية وسأقوم بتحويلها إلى نص.')
@@ -88,13 +98,25 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         audio = audio.set_frame_rate(16000)  # Set sample rate to 16kHz
         audio.export(voice_wav, format="wav")
         
-        # Read WAV file
-        with wave.open(voice_wav, 'rb') as wav_file:
-            frames = wav_file.readframes(wav_file.getnframes())
-            audio_data = np.frombuffer(frames, np.int16)
-        
         # Perform speech recognition
-        text = model.stt(audio_data)
+        wf = wave.open(voice_wav, "rb")
+        rec = KaldiRecognizer(model, wf.getframerate())
+        
+        text = ""
+        while True:
+            data = wf.readframes(4000)
+            if len(data) == 0:
+                break
+            if rec.AcceptWaveform(data):
+                result = json.loads(rec.Result())
+                text += result.get("text", "") + " "
+        
+        final_result = json.loads(rec.FinalResult())
+        text += final_result.get("text", "")
+        text = text.strip()
+        
+        if not text:
+            text = "لم أتمكن من فهم الكلام في هذا التسجيل"
         
         # Store in Firebase
         ref = db.reference('transcriptions')
@@ -108,6 +130,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"النص: {text}")
         
         # Cleanup temp files
+        wf.close()
         os.remove(voice_ogg)
         os.remove(voice_wav)
         
