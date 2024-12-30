@@ -5,3 +5,5 @@ deepspeech==0.9.3
 numpy==1.21.0
 scipy==1.7.0
 ffmpeg-python==0.2.0
+requests==2.31.0
+tqdm==4.66.1
